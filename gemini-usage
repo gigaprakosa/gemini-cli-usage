@@ -57,13 +57,15 @@ def aggregate_usage(usage_list):
 
 import time
 import urllib.request
+import re
 
 # Configuration
-PRICING_URL = "https://raw.githubusercontent.com/gigaprakosa/gemini-cli-usage/main/pricing.json"
+REPO_PRICING_URL = "https://raw.githubusercontent.com/gigaprakosa/gemini-cli-usage/main/pricing.json"
+LITELLM_PRICING_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
 CACHE_FILE = Path.home() / ".gemini/gemini-usage-pricing.json"
 CACHE_TTL = 86400  # 24 hours
 
-# Hardcoded fallback (May 2026)
+# May 2026 Hardcoded Defaults
 DEFAULT_PRICING = {
     "models": {
         "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
@@ -78,8 +80,15 @@ DEFAULT_PRICING = {
     }
 }
 
+def fetch_json(url):
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            return json.loads(response.read().decode())
+    except:
+        return None
+
 def load_pricing():
-    # Try to use cache first
+    # 1. Try valid cache
     if CACHE_FILE.exists():
         if time.time() - CACHE_FILE.stat().st_mtime < CACHE_TTL:
             try:
@@ -87,23 +96,42 @@ def load_pricing():
                     return json.load(f)
             except: pass
 
-    # Try to fetch fresh pricing
-    try:
-        with urllib.request.urlopen(PRICING_URL, timeout=5) as response:
-            data = json.loads(response.read().decode())
-            # Save to cache
-            os.makedirs(CACHE_FILE.parent, exist_ok=True)
-            with open(CACHE_FILE, 'w') as f:
-                json.dump(data, f)
-            return data
-    except:
-        # If fetch fails but cache exists (even if old), use it
-        if CACHE_FILE.exists():
-            try:
-                with open(CACHE_FILE, 'r') as f:
-                    return json.load(f)
-            except: pass
+    # 2. Try fetching from Community Source (LiteLLM) - The "Smart" way
+    # LiteLLM is the industry standard for up-to-date pricing
+    community_data = fetch_json(LITELLM_PRICING_URL)
+    if community_data:
+        # Transform LiteLLM format to our internal format
+        transformed = {"models": {}, "rules": DEFAULT_PRICING["rules"]}
+        for key, val in community_data.items():
+            if "gemini" in key:
+                # LiteLLM uses cost per token, we use per 1M tokens
+                input_cost = val.get("input_cost_per_token", 0) * 1_000_000
+                output_cost = val.get("output_cost_per_token", 0) * 1_000_000
+                if input_cost > 0:
+                    # Clean key (e.g., "gemini/gemini-1.5-pro" -> "gemini-1.5-pro")
+                    clean_key = key.split("/")[-1]
+                    transformed["models"][clean_key] = {"input": input_cost, "output": output_cost}
         
+        # Save to cache
+        os.makedirs(CACHE_FILE.parent, exist_ok=True)
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(transformed, f)
+        return transformed
+
+    # 3. Try fetching from Repo (Curated)
+    repo_data = fetch_json(REPO_PRICING_URL)
+    if repo_data:
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(repo_data, f)
+        return repo_data
+
+    # 4. Fallback to expired cache
+    if CACHE_FILE.exists():
+        try:
+            with open(CACHE_FILE, 'r') as f:
+                return json.load(f)
+        except: pass
+
     return DEFAULT_PRICING
 
 # Global pricing data
@@ -113,23 +141,21 @@ def get_pricing_for_model(model_name):
     model_name = model_name.lower()
     models = PRICING_DATA.get("models", {})
     
-    if "3.1-flash-lite" in model_name: return models.get("gemini-3.1-flash-lite")
-    if "3.1-flash" in model_name:      return models.get("gemini-3.1-flash")
-    if "3-flash" in model_name:        return models.get("gemini-3.1-flash")
-    if "3.1-pro" in model_name:        return models.get("gemini-3.1-pro")
-    if "3-pro" in model_name:          return models.get("gemini-3.1-pro")
-    if "auto-gemini-3" in model_name:  return models.get("gemini-3.1-flash")
-    if "2.5-flash" in model_name:      return models.get("gemini-2.5-flash")
-    if "2.5-pro" in model_name:        return models.get("gemini-2.5-pro")
+    # Try exact match
+    if model_name in models:
+        return models[model_name]
     
-    if "flash" in model_name:          return models.get("gemini-3.1-flash")
-    if "pro" in model_name:            return models.get("gemini-3.1-pro")
-    
-    return models.get("gemini-3.1-flash") # Default
+    # Try fuzzy match (e.g., "gemini-3.1-pro-preview" -> "gemini-3.1-pro")
+    for key in sorted(models.keys(), key=len, reverse=True):
+        if key in model_name or model_name in key:
+            return models[key]
+            
+    # Fallback to standard Flash pricing
+    return models.get("gemini-3.1-flash", DEFAULT_PRICING["models"]["gemini-3.1-flash"])
 
 def calculate_cost(model_name, stats):
     pricing = get_pricing_for_model(model_name)
-    rules = PRICING_DATA.get("rules", {})
+    rules = PRICING_DATA.get("rules", DEFAULT_PRICING["rules"])
     
     input_cost = (stats['input'] / 1_000_000) * pricing["input"]
     
