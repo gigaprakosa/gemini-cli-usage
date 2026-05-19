@@ -55,13 +55,27 @@ def aggregate_usage(usage_list):
         
     return aggregated
 
-def calculate_cost(stats):
-    # Prices per 1M tokens (estimated/typical)
-    # Input: $3.00, Output: $15.00
-    # Gemini specific: Thoughts and Cached input usually billed at input rate or similar
+# Model-based pricing per 1M tokens (USD)
+# Standard Gemini pricing (Flash vs Pro)
+MODEL_PRICING = {
+    "flash": {"input": 0.075, "output": 0.30},
+    "pro": {"input": 3.50, "output": 10.50},
+    "default": {"input": 3.00, "output": 15.00}  # Fallback for unknown models
+}
+
+def get_pricing_for_model(model_name):
+    model_name = model_name.lower()
+    if "flash" in model_name:
+        return MODEL_PRICING["flash"]
+    if "pro" in model_name:
+        return MODEL_PRICING["pro"]
+    return MODEL_PRICING["default"]
+
+def calculate_cost(model_name, stats):
+    pricing = get_pricing_for_model(model_name)
     input_total = stats['input'] + stats['cached'] + stats['thoughts']
-    input_cost = (input_total / 1_000_000) * 3.00
-    output_cost = (stats['output'] / 1_000_000) * 15.00
+    input_cost = (input_total / 1_000_000) * pricing["input"]
+    output_cost = (stats['output'] / 1_000_000) * pricing["output"]
     return input_cost + output_cost
 
 def print_table(aggregated):
@@ -73,16 +87,14 @@ def print_table(aggregated):
         print(f"📊 Gemini CLI Usage (last {len(months)} months):")
         
     for month in months:
-        # Aggregate stats for all models in the month
-        monthly_stats = {
-            'input': sum(m['input'] for m in aggregated[month].values()),
-            'output': sum(m['output'] for m in aggregated[month].values()),
-            'cached': sum(m['cached'] for m in aggregated[month].values()),
-            'thoughts': sum(m['thoughts'] for m in aggregated[month].values()),
-            'total': sum(m['total'] for m in aggregated[month].values())
-        }
-        cost = calculate_cost(monthly_stats)
-        print(f"• {month}: {monthly_stats['total']:,} tokens, Cost: ${cost:.2f}")
+        monthly_total_tokens = 0
+        monthly_total_cost = 0.0
+        
+        for model_name, stats in aggregated[month].items():
+            monthly_total_tokens += stats['total']
+            monthly_total_cost += calculate_cost(model_name, stats)
+            
+        print(f"• {month}: {monthly_total_tokens:,} tokens, Cost: ${monthly_total_cost:.2f}")
 
 if __name__ == "__main__":
     usage = get_all_usage()
