@@ -10,6 +10,7 @@ A CLI tool to track token usage for Gemini CLI sessions.
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) for Python code.
 - Ensure no external dependencies are added to keep the tool lightweight.
 - Output format must remain consistent with `ccusage` bullet-point style.
+- **No AI Attribution:** Do not include "Co-authored-by" or any other AI/agent attributions in commit messages.
 
 ## Release Process
 - Update version in script (if applicable).
