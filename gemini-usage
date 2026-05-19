@@ -57,30 +57,33 @@ def aggregate_usage(usage_list):
 
 # Official Google Gemini API Pricing (May 2026 Reference)
 # Prices per 1,000,000 tokens (USD)
-# Source: google.dev, techjacksolutions.com, metacto.com
 MODEL_PRICING = {
     "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
     "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
-    "gemini-3.1-pro": {"input": 2.00, "output": 12.00},  # Base tier (<=200k context)
+    "gemini-3.1-pro": {"input": 2.00, "output": 12.00},
     "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
-    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},  # Base tier
-    "default": {"input": 0.30, "output": 2.50}          # Fallback to standard Flash pricing
+    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
+    "default": {"input": 0.50, "output": 3.00}          # Default to Gemini 3 Flash
 }
 
 def get_pricing_for_model(model_name):
     model_name = model_name.lower()
-    # Prioritize 3.1 series
+    
+    # Exact matches for May 2026 model strings
     if "3.1-flash-lite" in model_name: return MODEL_PRICING["gemini-3.1-flash-lite"]
     if "3.1-flash" in model_name:      return MODEL_PRICING["gemini-3.1-flash"]
+    if "3-flash" in model_name:        return MODEL_PRICING["gemini-3.1-flash"]
     if "3.1-pro" in model_name:        return MODEL_PRICING["gemini-3.1-pro"]
+    if "3-pro" in model_name:          return MODEL_PRICING["gemini-3.1-pro"]
+    if "auto-gemini-3" in model_name:  return MODEL_PRICING["gemini-3.1-flash"]
     
-    # 2.5 series
+    # Older versions
     if "2.5-flash" in model_name:      return MODEL_PRICING["gemini-2.5-flash"]
     if "2.5-pro" in model_name:        return MODEL_PRICING["gemini-2.5-pro"]
     
-    # Generic matching
-    if "flash" in model_name:          return MODEL_PRICING["gemini-2.5-flash"]
-    if "pro" in model_name:            return MODEL_PRICING["gemini-2.5-pro"]
+    # Generic keywords
+    if "flash" in model_name:          return MODEL_PRICING["gemini-3.1-flash"]
+    if "pro" in model_name:            return MODEL_PRICING["gemini-3.1-pro"]
     
     return MODEL_PRICING["default"]
 
