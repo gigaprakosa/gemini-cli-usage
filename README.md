@@ -50,8 +50,8 @@ gemini-usage
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request or open an issue for any bugs or feature requests.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
