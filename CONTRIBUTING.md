@@ -1,4 +1,4 @@
-# Contributing to Gemini Usage
+# Contributing to Gemini CLI Usage
 
 Thank you for your interest in contributing! We welcome all improvements, from bug reports to new feature ideas.
 
@@ -21,7 +21,7 @@ To keep the tool lightweight, fast, and secure, all contributions must adhere to
 The project is a standalone Python script. No installation is required.
 
 ### Testing Your Changes
-1.  Run the script locally: `./gemini-usage`
+1.  Run the script locally: `./gemini-cli-usage`
 2.  Verify the output format remains consistent with the bullet-point style.
 3.  If you are testing pricing updates, you can temporarily modify `pricing.json` to see how overrides are handled.
 

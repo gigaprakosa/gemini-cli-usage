@@ -1,4 +1,4 @@
-# Project Gemini Usage
+# Gemini CLI Usage
 
 ## Description
 A CLI tool to track token usage and costs for Gemini CLI sessions with 100% data accuracy.

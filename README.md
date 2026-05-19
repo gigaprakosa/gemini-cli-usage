@@ -1,10 +1,10 @@
-# Gemini Usage
+# Gemini CLI Usage
 
 A lightweight, zero-dependency CLI tool to aggregate and display token usage and cost statistics from your local Gemini CLI sessions.
 
 ## Overview
 
-Gemini Usage scans your local Gemini CLI session logs to provide a definitive summary of token consumption and estimated costs. It features a "Smart Pricing Engine" that automatically stays up-to-date with the latest Google API rates.
+Gemini CLI Usage scans your local Gemini CLI session logs to provide a definitive summary of token consumption and estimated costs. It features a "Smart Pricing Engine" that automatically stays up-to-date with the latest Google API rates.
 
 ## Features
 
@@ -24,12 +24,12 @@ Gemini Usage scans your local Gemini CLI session logs to provide a definitive su
 
 2. Make the script executable:
    ```bash
-   chmod +x gemini-usage
+   chmod +x gemini-cli-usage
    ```
 
 3. (Optional) Add an alias to your shell profile (e.g., `~/.zshrc` or `~/.bashrc`) for easier access:
    ```bash
-   echo "alias gemini-usage='$(pwd)/gemini-usage'" >> ~/.zshrc
+   echo "alias gemini-cli-usage='$(pwd)/gemini-cli-usage'" >> ~/.zshrc
    source ~/.zshrc
    ```
 
@@ -38,7 +38,7 @@ Gemini Usage scans your local Gemini CLI session logs to provide a definitive su
 Simply run the command from your terminal:
 
 ```bash
-gemini-usage
+gemini-cli-usage
 ```
 
 ### Example Output
