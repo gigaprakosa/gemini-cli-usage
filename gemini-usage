@@ -22,7 +22,8 @@ def parse_session_file(filepath):
                             'input': data['tokens'].get('input', 0),
                             'output': data['tokens'].get('output', 0),
                             'cached': data['tokens'].get('cached', 0),
-                            'thoughts': data['tokens'].get('thoughts', 0)
+                            'thoughts': data['tokens'].get('thoughts', 0),
+                            'tool': data['tokens'].get('tool', 0)
                         })
                 except:
                     continue
@@ -41,7 +42,7 @@ def get_all_usage():
 def aggregate_usage(usage_list):
     # month -> model -> stats
     aggregated = defaultdict(lambda: defaultdict(lambda: {
-        'input': 0, 'output': 0, 'cached': 0, 'thoughts': 0, 'total': 0
+        'input': 0, 'output': 0, 'cached': 0, 'thoughts': 0, 'tool': 0, 'total': 0
     }))
     
     for item in usage_list:
@@ -51,7 +52,8 @@ def aggregate_usage(usage_list):
         aggregated[m][model]['output'] += item['output']
         aggregated[m][model]['cached'] += item['cached']
         aggregated[m][model]['thoughts'] += item['thoughts']
-        aggregated[m][model]['total'] += (item['input'] + item['output'] + item['cached'] + item['thoughts'])
+        aggregated[m][model]['tool'] += item['tool']
+        aggregated[m][model]['total'] += (item['input'] + item['output'] + item['cached'] + item['thoughts'] + item['tool'])
         
     return aggregated
 
@@ -157,7 +159,9 @@ def calculate_cost(model_name, stats):
     pricing = get_pricing_for_model(model_name)
     rules = PRICING_DATA.get("rules", DEFAULT_PRICING["rules"])
     
-    input_cost = (stats['input'] / 1_000_000) * pricing["input"]
+    # Tool tokens are essentially input tokens (result of tools sent back to model)
+    input_total = stats['input'] + stats.get('tool', 0)
+    input_cost = (input_total / 1_000_000) * pricing["input"]
     
     cache_factor = rules.get("cache_read_factor", 0.10)
     cache_read_cost = (stats['cached'] / 1_000_000) * (pricing["input"] * cache_factor)
