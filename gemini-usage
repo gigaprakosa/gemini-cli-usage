@@ -55,28 +55,52 @@ def aggregate_usage(usage_list):
         
     return aggregated
 
-# Model-based pricing per 1M tokens (USD)
-# Standard Gemini pricing (Flash vs Pro)
+# Official Google Gemini API Pricing (May 2026 Reference)
+# Prices per 1,000,000 tokens (USD)
+# Source: google.dev, techjacksolutions.com, metacto.com
 MODEL_PRICING = {
-    "flash": {"input": 0.075, "output": 0.30},
-    "pro": {"input": 3.50, "output": 10.50},
-    "default": {"input": 3.00, "output": 15.00}  # Fallback for unknown models
+    "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
+    "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
+    "gemini-3.1-pro": {"input": 2.00, "output": 12.00},  # Base tier (<=200k context)
+    "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},  # Base tier
+    "default": {"input": 0.30, "output": 2.50}          # Fallback to standard Flash pricing
 }
 
 def get_pricing_for_model(model_name):
     model_name = model_name.lower()
-    if "flash" in model_name:
-        return MODEL_PRICING["flash"]
-    if "pro" in model_name:
-        return MODEL_PRICING["pro"]
+    # Prioritize 3.1 series
+    if "3.1-flash-lite" in model_name: return MODEL_PRICING["gemini-3.1-flash-lite"]
+    if "3.1-flash" in model_name:      return MODEL_PRICING["gemini-3.1-flash"]
+    if "3.1-pro" in model_name:        return MODEL_PRICING["gemini-3.1-pro"]
+    
+    # 2.5 series
+    if "2.5-flash" in model_name:      return MODEL_PRICING["gemini-2.5-flash"]
+    if "2.5-pro" in model_name:        return MODEL_PRICING["gemini-2.5-pro"]
+    
+    # Generic matching
+    if "flash" in model_name:          return MODEL_PRICING["gemini-2.5-flash"]
+    if "pro" in model_name:            return MODEL_PRICING["gemini-2.5-pro"]
+    
     return MODEL_PRICING["default"]
 
 def calculate_cost(model_name, stats):
     pricing = get_pricing_for_model(model_name)
-    input_total = stats['input'] + stats['cached'] + stats['thoughts']
-    input_cost = (input_total / 1_000_000) * pricing["input"]
+    
+    # May 2026 Billing Rules:
+    # 1. Standard Input tokens
+    input_cost = (stats['input'] / 1_000_000) * pricing["input"]
+    
+    # 2. Cache Read tokens are billed at 10% of base input price
+    cache_read_cost = (stats['cached'] / 1_000_000) * (pricing["input"] * 0.10)
+    
+    # 3. Thought tokens (Reasoning) are billed at Output rate
+    thought_cost = (stats['thoughts'] / 1_000_000) * pricing["output"]
+    
+    # 4. Standard Output tokens
     output_cost = (stats['output'] / 1_000_000) * pricing["output"]
-    return input_cost + output_cost
+    
+    return input_cost + cache_read_cost + thought_cost + output_cost
 
 def print_table(aggregated):
     months = sorted(aggregated.keys())
