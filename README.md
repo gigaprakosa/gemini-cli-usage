@@ -1,24 +1,25 @@
 # Gemini Usage
 
-A lightweight CLI tool to aggregate and display token usage statistics from your Gemini CLI sessions.
+A lightweight, zero-dependency CLI tool to aggregate and display token usage and cost statistics from your local Gemini CLI sessions.
 
 ## Overview
 
-Gemini Usage scans your local Gemini CLI session logs to provide a clear summary of token consumption and estimated costs. It aggregates data by month and presents it in a clean, readable format directly in your terminal.
+Gemini Usage scans your local Gemini CLI session logs to provide a definitive summary of token consumption and estimated costs. It features a "Smart Pricing Engine" that automatically stays up-to-date with the latest Google API rates.
 
 ## Features
 
-- **Automatic Discovery:** Automatically locates session logs in the default Gemini CLI directory.
-- **Monthly Aggregation:** Groups token usage by month for easy tracking.
-- **Cost Estimation:** Provides cost estimates based on standard token pricing.
-- **Model Breakdown:** Tracks usage across different Gemini models used in your sessions.
+- **Smart Pricing Engine:** Automatically fetches the latest pricing data from the community-standard [LiteLLM database](https://github.com/BerriAI/litellm).
+- **100% Data Accuracy:** Tracks all token types, including standard input/output, thought tokens (reasoning), cached context, and tool-generated tokens.
+- **Advanced Billing Rules:** Correctly applies Gemini 3.1 billing nuances (e.g., thought tokens at output rates, discounted cache reads).
+- **Automatic Discovery:** Seamlessly locates session logs in the default Gemini CLI directory.
+- **Zero Dependencies:** Pure Python 3 using only the standard library for maximum portability and security.
 
 ## Installation
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/gemini-usage.git
-   cd gemini-usage
+   git clone https://github.com/gigaprakosa/gemini-cli-usage.git
+   cd gemini-cli-usage
    ```
 
 2. Make the script executable:
@@ -44,8 +45,8 @@ gemini-usage
 
 ```text
 📊 Gemini CLI Usage (last 2 months):
-• 2026-04: 7,436,411 tokens, Cost: $22.61
-• 2026-05: 60,803,167 tokens, Cost: $183.69
+• 2026-04: 7,436,411 tokens, Cost: $2.72
+• 2026-05: 86,282,310 tokens, Cost: $32.50
 ```
 
 ## Contributing
