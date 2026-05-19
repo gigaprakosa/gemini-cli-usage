@@ -1,30 +1,30 @@
 # Contributing to Gemini Usage
 
-Thank you for your interest in contributing to Gemini Usage! We welcome all contributions, from bug reports and documentation improvements to new features.
+Thank you for your interest in contributing! We welcome all improvements, from bug reports to new feature ideas.
 
-## How to Contribute
+## Engineering Standards
 
-### 1. Reporting Bugs
-- Use the GitHub Issues tracker.
-- Provide a clear description of the issue and steps to reproduce it.
+To keep the tool lightweight, fast, and secure, all contributions must adhere to these standards:
 
-### 2. Suggesting Enhancements
-- Open a GitHub Issue to discuss your idea.
+1.  **Zero External Dependencies:** Use only the Python 3 standard library. Do not add `requirements.txt` or any third-party packages.
+2.  **Smart Pricing Integrity:** If adding support for new models, ensure they are compatible with the fuzzy matching logic in the `Smart Pricing Engine`.
+3.  **Data Accuracy:** Changes to the parsing logic must be verified against raw `.jsonl` logs in `~/.gemini/tmp/`.
 
-### 3. Pull Requests
-- Fork the repository.
-- Create a new branch for your feature or fix.
-- Ensure your code follows the project's style.
-- Submit a Pull Request with a detailed description of your changes.
+## Commit & Pull Request Rules
+
+-   **Conventional Commits:** Use the [Conventional Commits](https://www.conventionalcommits.org/) format (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
+-   **No AI Attribution:** **Do not** include "Co-authored-by" or any other AI/agent attributions in your commit messages.
+-   **Atomic Changes:** Keep PRs focused on a single fix or feature.
 
 ## Development Setup
 
-The project is a standalone Python script. No external dependencies are required.
+The project is a standalone Python script. No installation is required.
 
-To test your changes:
-1. Run the script: `./gemini-usage`
-2. Verify the output format and data accuracy.
+### Testing Your Changes
+1.  Run the script locally: `./gemini-usage`
+2.  Verify the output format remains consistent with the bullet-point style.
+3.  If you are testing pricing updates, you can temporarily modify `pricing.json` to see how overrides are handled.
 
 ## Code of Conduct
 
-Please be respectful and professional in all interactions.
+Be respectful, professional, and constructive in all interactions.
