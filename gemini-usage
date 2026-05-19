@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+import json
+import glob
+import os
+from pathlib import Path
+from collections import defaultdict
+from datetime import datetime
+
+def parse_session_file(filepath):
+    usage_data = []
+    try:
+        with open(filepath, 'r') as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    if data.get('type') == 'gemini' and 'tokens' in data:
+                        timestamp = data.get('timestamp')
+                        month = timestamp[:7] if timestamp else "unknown"
+                        usage_data.append({
+                            'month': month,
+                            'model': data.get('model', 'unknown'),
+                            'input': data['tokens'].get('input', 0),
+                            'output': data['tokens'].get('output', 0),
+                            'cached': data['tokens'].get('cached', 0),
+                            'thoughts': data['tokens'].get('thoughts', 0)
+                        })
+                except:
+                    continue
+    except:
+        pass
+    return usage_data
+
+def get_all_usage():
+    all_usage = []
+    base_dir = Path.home() / ".gemini/tmp"
+    chat_files = glob.glob(str(base_dir / "**/chats/*.jsonl"), recursive=True)
+    for f in chat_files:
+        all_usage.extend(parse_session_file(f))
+    return all_usage
+
+def aggregate_usage(usage_list):
+    # month -> model -> stats
+    aggregated = defaultdict(lambda: defaultdict(lambda: {
+        'input': 0, 'output': 0, 'cached': 0, 'thoughts': 0, 'total': 0
+    }))
+    
+    for item in usage_list:
+        m = item['month']
+        model = item['model']
+        aggregated[m][model]['input'] += item['input']
+        aggregated[m][model]['output'] += item['output']
+        aggregated[m][model]['cached'] += item['cached']
+        aggregated[m][model]['thoughts'] += item['thoughts']
+        aggregated[m][model]['total'] += (item['input'] + item['output'] + item['cached'] + item['thoughts'])
+        
+    return aggregated
+
+def calculate_cost(stats):
+    # Prices per 1M tokens (estimated/typical)
+    # Input: $3.00, Output: $15.00
+    # Gemini specific: Thoughts and Cached input usually billed at input rate or similar
+    input_total = stats['input'] + stats['cached'] + stats['thoughts']
+    input_cost = (input_total / 1_000_000) * 3.00
+    output_cost = (stats['output'] / 1_000_000) * 15.00
+    return input_cost + output_cost
+
+def print_table(aggregated):
+    months = sorted(aggregated.keys())
+    
+    if len(months) == 1:
+        print("📊 Gemini CLI Usage:")
+    else:
+        print(f"📊 Gemini CLI Usage (last {len(months)} months):")
+        
+    for month in months:
+        # Aggregate stats for all models in the month
+        monthly_stats = {
+            'input': sum(m['input'] for m in aggregated[month].values()),
+            'output': sum(m['output'] for m in aggregated[month].values()),
+            'cached': sum(m['cached'] for m in aggregated[month].values()),
+            'thoughts': sum(m['thoughts'] for m in aggregated[month].values()),
+            'total': sum(m['total'] for m in aggregated[month].values())
+        }
+        cost = calculate_cost(monthly_stats)
+        print(f"• {month}: {monthly_stats['total']:,} tokens, Cost: ${cost:.2f}")
+
+if __name__ == "__main__":
+    usage = get_all_usage()
+    if not usage:
+        print("No usage data found.")
+    else:
+        agg = aggregate_usage(usage)
+        print_table(agg)
