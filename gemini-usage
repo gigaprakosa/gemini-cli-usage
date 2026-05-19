@@ -55,53 +55,90 @@ def aggregate_usage(usage_list):
         
     return aggregated
 
-# Official Google Gemini API Pricing (May 2026 Reference)
-# Prices per 1,000,000 tokens (USD)
-MODEL_PRICING = {
-    "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
-    "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
-    "gemini-3.1-pro": {"input": 2.00, "output": 12.00},
-    "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
-    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
-    "default": {"input": 0.50, "output": 3.00}          # Default to Gemini 3 Flash
+import time
+import urllib.request
+
+# Configuration
+PRICING_URL = "https://raw.githubusercontent.com/gigaprakosa/gemini-cli-usage/main/pricing.json"
+CACHE_FILE = Path.home() / ".gemini/gemini-usage-pricing.json"
+CACHE_TTL = 86400  # 24 hours
+
+# Hardcoded fallback (May 2026)
+DEFAULT_PRICING = {
+    "models": {
+        "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
+        "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
+        "gemini-3.1-pro": {"input": 2.00, "output": 12.00},
+        "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+        "gemini-2.5-pro": {"input": 1.25, "output": 10.00}
+    },
+    "rules": {
+        "cache_read_factor": 0.10,
+        "thought_billed_as": "output"
+    }
 }
+
+def load_pricing():
+    # Try to use cache first
+    if CACHE_FILE.exists():
+        if time.time() - CACHE_FILE.stat().st_mtime < CACHE_TTL:
+            try:
+                with open(CACHE_FILE, 'r') as f:
+                    return json.load(f)
+            except: pass
+
+    # Try to fetch fresh pricing
+    try:
+        with urllib.request.urlopen(PRICING_URL, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            # Save to cache
+            os.makedirs(CACHE_FILE.parent, exist_ok=True)
+            with open(CACHE_FILE, 'w') as f:
+                json.dump(data, f)
+            return data
+    except:
+        # If fetch fails but cache exists (even if old), use it
+        if CACHE_FILE.exists():
+            try:
+                with open(CACHE_FILE, 'r') as f:
+                    return json.load(f)
+            except: pass
+        
+    return DEFAULT_PRICING
+
+# Global pricing data
+PRICING_DATA = load_pricing()
 
 def get_pricing_for_model(model_name):
     model_name = model_name.lower()
+    models = PRICING_DATA.get("models", {})
     
-    # Exact matches for May 2026 model strings
-    if "3.1-flash-lite" in model_name: return MODEL_PRICING["gemini-3.1-flash-lite"]
-    if "3.1-flash" in model_name:      return MODEL_PRICING["gemini-3.1-flash"]
-    if "3-flash" in model_name:        return MODEL_PRICING["gemini-3.1-flash"]
-    if "3.1-pro" in model_name:        return MODEL_PRICING["gemini-3.1-pro"]
-    if "3-pro" in model_name:          return MODEL_PRICING["gemini-3.1-pro"]
-    if "auto-gemini-3" in model_name:  return MODEL_PRICING["gemini-3.1-flash"]
+    if "3.1-flash-lite" in model_name: return models.get("gemini-3.1-flash-lite")
+    if "3.1-flash" in model_name:      return models.get("gemini-3.1-flash")
+    if "3-flash" in model_name:        return models.get("gemini-3.1-flash")
+    if "3.1-pro" in model_name:        return models.get("gemini-3.1-pro")
+    if "3-pro" in model_name:          return models.get("gemini-3.1-pro")
+    if "auto-gemini-3" in model_name:  return models.get("gemini-3.1-flash")
+    if "2.5-flash" in model_name:      return models.get("gemini-2.5-flash")
+    if "2.5-pro" in model_name:        return models.get("gemini-2.5-pro")
     
-    # Older versions
-    if "2.5-flash" in model_name:      return MODEL_PRICING["gemini-2.5-flash"]
-    if "2.5-pro" in model_name:        return MODEL_PRICING["gemini-2.5-pro"]
+    if "flash" in model_name:          return models.get("gemini-3.1-flash")
+    if "pro" in model_name:            return models.get("gemini-3.1-pro")
     
-    # Generic keywords
-    if "flash" in model_name:          return MODEL_PRICING["gemini-3.1-flash"]
-    if "pro" in model_name:            return MODEL_PRICING["gemini-3.1-pro"]
-    
-    return MODEL_PRICING["default"]
+    return models.get("gemini-3.1-flash") # Default
 
 def calculate_cost(model_name, stats):
     pricing = get_pricing_for_model(model_name)
+    rules = PRICING_DATA.get("rules", {})
     
-    # May 2026 Billing Rules:
-    # 1. Standard Input tokens
     input_cost = (stats['input'] / 1_000_000) * pricing["input"]
     
-    # 2. Cache Read tokens are billed at 10% of base input price
-    cache_read_cost = (stats['cached'] / 1_000_000) * (pricing["input"] * 0.10)
+    cache_factor = rules.get("cache_read_factor", 0.10)
+    cache_read_cost = (stats['cached'] / 1_000_000) * (pricing["input"] * cache_factor)
     
-    # 3. Thought tokens (Reasoning) are billed at Output rate
-    thought_cost = (stats['thoughts'] / 1_000_000) * pricing["output"]
-    
-    # 4. Standard Output tokens
-    output_cost = (stats['output'] / 1_000_000) * pricing["output"]
+    output_rate = pricing["output"]
+    thought_cost = (stats['thoughts'] / 1_000_000) * output_rate
+    output_cost = (stats['output'] / 1_000_000) * output_rate
     
     return input_cost + cache_read_cost + thought_cost + output_cost
 

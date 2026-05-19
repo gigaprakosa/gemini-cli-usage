@@ -1,0 +1,14 @@
+{
+  "models": {
+    "gemini-3.1-flash": {"input": 0.50, "output": 3.00},
+    "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50},
+    "gemini-3.1-pro": {"input": 2.00, "output": 12.00},
+    "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+    "gemini-2.5-pro": {"input": 1.25, "output": 10.00}
+  },
+  "rules": {
+    "cache_read_factor": 0.10,
+    "thought_billed_as": "output",
+    "updated_at": "2026-05-19T06:00:00Z"
+  }
+}
